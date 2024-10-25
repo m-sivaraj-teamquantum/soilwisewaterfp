@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crop Water Footprint</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+            background: linear-gradient(135deg, #f0f4c3, #ffffff);
+            color: #333;
+            overflow: hidden;
+        }
+        h1 {
+            text-align: center;
+            animation: fadeIn 2s ease;
+            font-size: 2.5em;
+            color: #4caf50; /* Bright green */
+        }
+        label {
+            font-size: 1.2em;
+            color: #3f51b5; /* Bright blue */
+        }
+        select, button {
+            padding: 10px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            background-color: #ffeb3b; /* Bright yellow */
+            color: #333;
+            font-size: 1em;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        select:hover, button:hover {
+            background-color: #ffe082; /* Lighter yellow */
+            transform: scale(1.05);
+        }
+        .chart-container {
+            width: 40%;
+            margin: 20px auto;
+            animation: slideIn 1s ease;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        #footprint-data {
+            animation: popIn 0.5s ease;
+            margin: 20px;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes popIn {
+            from { transform: scale(0); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Select Crop to View Water Footprint</h1>
+    <label for="crop-select">Choose a crop:</label>
+    <select id="crop-select">
+        <!-- Options will be dynamically populated -->
+    </select>
+
+    <div id="footprint-data"></div>
+
+    <div class="chart-container">
+        <canvas id="waterChart"></canvas>
+    </div>
+
+    <script>
+        const cropsData = {
+           "Rice": {"Alluvial": 2500, "Black": 2800, "Red": 3000, "Laterite": 3200, "Desert": 4000, "Mountain": 2600, "Saline": 4500, "Peaty and Marshy": 2300},
+"Wheat": {"Alluvial": 1300, "Black": 1400, "Red": 1800, "Laterite": 2000, "Desert": 2500, "Mountain": 1500, "Saline": 2200, "Peaty and Marshy": 1200},
+"Sugarcane": {"Alluvial": 1500, "Black": 1700, "Red": 2200, "Laterite": 2500, "Desert": 3000, "Mountain": 2000, "Saline": 3200, "Peaty and Marshy": 1600},
+"Cotton": {"Alluvial": 2100, "Black": 2500, "Red": 2800, "Laterite": 3200, "Desert": 4500, "Mountain": 2400, "Saline": 3500, "Peaty and Marshy": 2200},
+"Tomato": {"Alluvial": 300, "Black": 350, "Red": 400, "Laterite": 450, "Desert": 600, "Mountain": 350, "Saline": 500, "Peaty and Marshy": 300},
+"Banana": {"Alluvial": 600, "Black": 700, "Red": 900, "Laterite": 1000, "Desert": 1300, "Mountain": 800, "Saline": 1200, "Peaty and Marshy": 600},
+"Groundnut": {"Alluvial": 2500, "Black": 2800, "Red": 3000, "Laterite": 3200, "Desert": 3500, "Mountain": 2600, "Saline": 3500, "Peaty and Marshy": 2500},
+"Onion": {"Alluvial": 400, "Black": 450, "Red": 500, "Laterite": 600, "Desert": 800, "Mountain": 500, "Saline": 600, "Peaty and Marshy": 400},
+"Maize": {"Alluvial": 900, "Black": 1000, "Red": 1200, "Laterite": 1400, "Desert": 1800, "Mountain": 1000, "Saline": 1600, "Peaty and Marshy": 900},
+"Barley": {"Alluvial": 800, "Black": 900, "Red": 1100, "Laterite": 1200, "Desert": 1500, "Mountain": 900, "Saline": 1400, "Peaty and Marshy": 800},
+"Oats": {"Alluvial": 700, "Black": 800, "Red": 1000, "Laterite": 1100, "Desert": 1400, "Mountain": 800, "Saline": 1300, "Peaty and Marshy": 700},
+"Potato": {"Alluvial": 300, "Black": 350, "Red": 400, "Laterite": 500, "Desert": 600, "Mountain": 350, "Saline": 500, "Peaty and Marshy": 300},
+"Soybean": {"Alluvial": 2000, "Black": 2200, "Red": 2500, "Laterite": 2800, "Desert": 3500, "Mountain": 2200, "Saline": 3000, "Peaty and Marshy": 2000},
+"Sunflower": {"Alluvial": 1500, "Black": 1700, "Red": 2000, "Laterite": 2200, "Desert": 2800, "Mountain": 1700, "Saline": 2400, "Peaty and Marshy": 1500},
+"Tea": {"Alluvial": 2500, "Black": 2800, "Red": 3200, "Laterite": 3500, "Desert": 4500, "Mountain": 2800, "Saline": 4000, "Peaty and Marshy": 2500},
+"Coffee": {"Alluvial": 2000, "Black": 2350, "Red": 2500, "Laterite": 2600, "Desert": 3200, "Mountain": 2350, "Saline": 2800, "Peaty and Marshy": 2000},
+"Coconut": {"Alluvial": 2750, "Black": 3200, "Red": 3750, "Laterite": 4250, "Desert": 5250, "Mountain": 3200, "Saline": 4000, "Peaty and Marshy": 2750},
+"Areca Nut": {"Alluvial": 3750, "Black": 4250, "Red": 4750, "Laterite": 5250, "Desert": 6500, "Mountain": 4250, "Saline": 5500, "Peaty and Marshy": 3750},
+"Cardamom": {"Alluvial": 4000, "Black": 4750, "Red": 5500, "Laterite": 6250, "Desert": 8000, "Mountain": 4750, "Saline": 6500, "Peaty and Marshy": 4000},
+"Chili": {"Alluvial": 600, "Black": 750, "Red": 900, "Laterite": 1150, "Desert": 1500, "Mountain": 850, "Saline": 1300, "Peaty and Marshy": 600},
+"Coriander": {"Alluvial": 450, "Black": 600, "Red": 750, "Laterite": 900, "Desert": 1300, "Mountain": 650, "Saline": 1000, "Peaty and Marshy": 550},
+"Cumin": {"Alluvial": 750, "Black": 900, "Red": 1150, "Laterite": 1500, "Desert": 2000, "Mountain": 1000, "Saline": 1600, "Peaty and Marshy": 950},
+"Turmeric": {"Alluvial": 900, "Black": 1150, "Red": 1500, "Laterite": 1900, "Desert": 2800, "Mountain": 1300, "Saline": 2100, "Peaty and Marshy": 1200},
+"Ginger": {"Alluvial": 1150, "Black": 1500, "Red": 1900, "Laterite": 2400, "Desert": 3500, "Mountain": 1750, "Saline": 2800, "Peaty and Marshy": 1650},
+"Garlic": {"Alluvial": 650, "Black": 850, "Red": 1050, "Laterite": 1300, "Desert": 2000, "Mountain": 1000, "Saline": 1500, "Peaty and Marshy": 1100},
+"Onion Seeds": {"Alluvial": 1750, "Black": 2250, "Red": 2750, "Laterite": 3500, "Desert": 5000, "Mountain": 2250, "Saline": 3750, "Peaty and Marshy": 2750},
+"Mustard Seeds": {"Alluvial": 1300, "Black": 1750, "Red": 2250, "Laterite": 2750, "Desert": 4000, "Mountain": 2000, "Saline": 3250, "Peaty and Marshy": 1900},
+"Sesame Seeds": {"Alluvial": 1500, "Black": 2000, "Red": 2500, "Laterite": 3200, "Desert": 5000, "Mountain": 2000, "Saline": 3500, "Peaty and Marshy": 2100},
+"Mint": {"Alluvial": 2250, "Black": 2750, "Red": 3500, "Laterite": 4250, "Desert": 6750, "Mountain": 3250, "Saline": 5250, "Peaty and Marshy": 3250},
+"Basil": {"Alluvial": 1300, "Black": 1750, "Red": 2250, "Laterite": 2750, "Desert": 4000, "Mountain": 2000, "Saline": 3250, "Peaty and Marshy": 1900},
+"Cinnamon": {"Alluvial": 3000, "Black": 3750, "Red": 4500, "Laterite": 5500, "Desert": 10000, "Mountain": 4500, "Saline": 7000, "Peaty and Marshy": 4250},
+"Cloves": {"Alluvial": 2250, "Black": 3250, "Red": 4000, "Laterite": 5250, "Desert": 8250, "Mountain": 3750, "Saline": 6750, "Peaty and Marshy": 4250},
+"Nutmeg": {"Alluvial": 3750, "Black": 4500, "Red": 5500, "Laterite": 7000, "Desert": 13000, "Mountain": 5500, "Saline": 9000, "Peaty and Marshy": 6250},
+"Star Anise": {"Alluvial": 1500, "Black": 2250, "Red": 3000, "Laterite": 4000, "Desert": 6500, "Mountain": 2750, "Saline": 4750, "Peaty and Marshy": 3250},
+"Tamarind": {"Alluvial": 1500, "Black": 2000, "Red": 2500, "Laterite": 3250, "Desert": 4500, "Mountain": 2250, "Saline": 3750, "Peaty and Marshy": 1900},
+"Coffee Beans": {"Alluvial": 3250, "Black": 4000, "Red": 5000, "Laterite": 6750, "Desert": 10000, "Mountain": 4250, "Saline": 7250, "Peaty and Marshy": 4250},
+"Cocoa Beans": {"Alluvial": 4250, "Black": 5500, "Red": 7250, "Laterite": 10000, "Desert": 15000, "Mountain": 6250, "Saline": 10750, "Peaty and Marshy": 6250},
+"Cashew Nuts": {"Alluvial": 4000, "Black": 5250, "Red": 6750, "Laterite": 9000, "Desert": 14000, "Mountain": 5750, "Saline": 9350, "Peaty and Marshy": 5250},
+"Pistachios": {"Alluvial": 5250, "Black": 6750, "Red": 9000, "Laterite": 12000, "Desert": 20000, "Mountain": 7750, "Saline": 13300, "Peaty and Marshy": 7750},
+"Almonds": {"Alluvial": 6250, "Black": 8250, "Red": 11000, "Laterite": 14500, "Desert": 23000, "Mountain": 9250, "Saline": 15750, "Peaty and Marshy": 10750},
+"Walnuts": {"Alluvial": 4250, "Black": 5750, "Red": 7750, "Laterite": 10750, "Desert": 17500, "Mountain": 6750, "Saline": 11750, "Peaty and Marshy": 6750},
+"Hazelnuts": {"Alluvial": 3500, "Black": 5000, "Red": 6750, "Laterite": 9250, "Desert": 15500, "Mountain": 6000, "Saline": 10500, "Peaty and Marshy": 6000},
+"Cranberries": {"Alluvial": 800, "Black": 1200, "Red": 1650, "Laterite": 2250, "Desert": 3500, "Mountain": 1500, "Saline": 2600, "Peaty and Marshy": 1500},
+"Blueberries": {"Alluvial": 600, "Black": 1000, "Red": 1400, "Laterite": 2000, "Desert": 3250, "Mountain": 1200, "Saline": 2100, "Peaty and Marshy": 1200},
+"Strawberries": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Pomegranate": {"Alluvial": 1300, "Black": 2000, "Red": 2600, "Laterite": 3600, "Desert": 5500, "Mountain": 2500, "Saline": 3750, "Peaty and Marshy": 2500},
+"Acai Berries": {"Alluvial": 1750, "Black": 2500, "Red": 3250, "Laterite": 4500, "Desert": 6750, "Mountain": 3000, "Saline": 4750, "Peaty and Marshy": 3000},
+"Goji Berries": {"Alluvial": 1200, "Black": 1800, "Red": 2400, "Laterite": 3300, "Desert": 5000, "Mountain": 2250, "Saline": 3600, "Peaty and Marshy": 2250},
+"Elderberries": {"Alluvial": 800, "Black": 1200, "Red": 1650, "Laterite": 2250, "Desert": 3500, "Mountain": 1500, "Saline": 2600, "Peaty and Marshy": 1500},
+"Raspberries": {"Alluvial": 600, "Black": 1000, "Red": 1400, "Laterite": 2000, "Desert": 3250, "Mountain": 1200, "Saline": 2100, "Peaty and Marshy": 1200},
+"Blackberries": {"Alluvial": 800, "Black": 1200, "Red": 1650, "Laterite": 2250, "Desert": 3500, "Mountain": 1500, "Saline": 2600, "Peaty and Marshy": 1500},
+"Apricots": {"Alluvial": 1000, "Black": 1450, "Red": 2000, "Laterite": 2700, "Desert": 4250, "Mountain": 1850, "Saline": 3250, "Peaty and Marshy": 1850},
+"Peaches": {"Alluvial": 800, "Black": 1200, "Red": 1650, "Laterite": 2250, "Desert": 3500, "Mountain": 1500, "Saline": 2600, "Peaty and Marshy": 1500},
+"Plums": {"Alluvial": 1000, "Black": 1450, "Red": 2000, "Laterite": 2700, "Desert": 4250, "Mountain": 1850, "Saline": 3250, "Peaty and Marshy": 1850},
+"Papaya": {"Alluvial": 600, "Black": 1000, "Red": 1400, "Laterite": 2000, "Desert": 3250, "Mountain": 1200, "Saline": 2100, "Peaty and Marshy": 1200},
+"Mangoes": {"Alluvial": 800, "Black": 1200, "Red": 1650, "Laterite": 2250, "Desert": 3500, "Mountain": 1500, "Saline": 2600, "Peaty and Marshy": 1500},
+"Pineapple": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Watermelon": {"Alluvial": 250, "Black": 500, "Red": 900, "Laterite": 1300, "Desert": 2200, "Mountain": 600, "Saline": 1100, "Peaty and Marshy": 600},
+"Grapes": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Figs": {"Alluvial": 600, "Black": 1000, "Red": 1400, "Laterite": 2000, "Desert": 3250, "Mountain": 1200, "Saline": 2100, "Peaty and Marshy": 1200},
+"Pears": {"Alluvial": 800, "Black": 1200, "Red": 1650, "Laterite": 2250, "Desert": 3500, "Mountain": 1500, "Saline": 2600, "Peaty and Marshy": 1500},
+"Quince": {"Alluvial": 1000, "Black": 1450, "Red": 2000, "Laterite": 2700, "Desert": 4250, "Mountain": 1850, "Saline": 3250, "Peaty and Marshy": 1850},
+"Persimmon": {"Alluvial": 800, "Black": 1200, "Red": 1650, "Laterite": 2250, "Desert": 3500, "Mountain": 1500, "Saline": 2600, "Peaty and Marshy": 1500},
+"Loquat": {"Alluvial": 1200, "Black": 1650, "Red": 2250, "Laterite": 3000, "Desert": 4750, "Mountain": 2100, "Saline": 3750, "Peaty and Marshy": 2100},
+"Guava": {"Alluvial": 800, "Black": 1200, "Red": 1650, "Laterite": 2250, "Desert": 3500, "Mountain": 1500, "Saline": 2600, "Peaty and Marshy": 1500},
+"Passion Fruit": {"Alluvial": 600, "Black": 1000, "Red": 1400, "Laterite": 2000, "Desert": 3250, "Mountain": 1200, "Saline": 2100, "Peaty and Marshy": 1200},
+"Pomegranate": {"Alluvial": 1300, "Black": 2000, "Red": 2600, "Laterite": 3600, "Desert": 5500, "Mountain": 2500, "Saline": 3750, "Peaty and Marshy": 2500},
+"Avocado": {"Alluvial": 1200, "Black": 1650, "Red": 2250, "Laterite": 3000, "Desert": 4750, "Mountain": 2100, "Saline": 3750, "Peaty and Marshy":600-3500},
+"Bamboo Shoots": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Rhubarb": {"Alluvial": 800, "Black": 1200, "Red": 1650, "Laterite": 2250, "Desert": 3500, "Mountain": 1500, "Saline": 2600, "Peaty and Marshy": 1500},
+"Artichoke": {"Alluvial": 1000, "Black": 1450, "Red": 2000, "Laterite": 2700, "Desert": 4250, "Mountain": 1850, "Saline": 3250, "Peaty and Marshy": 1850},
+"Okra": {"Alluvial": 600, "Black": 1000, "Red": 1400, "Laterite": 2000, "Desert": 3250, "Mountain": 1200, "Saline": 2100, "Peaty and Marshy": 1200},
+"Celery": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Radish": {"Alluvial": 250, "Black": 500, "Red": 900, "Laterite": 1300, "Desert": 2200, "Mountain": 600, "Saline": 1100, "Peaty and Marshy": 600},
+"Turnip": {"Alluvial": 325, "Black": 650, "Red": 1150, "Laterite": 1650, "Desert": 2700, "Mountain": 775, "Saline": 1550, "Peaty and Marshy": 775},
+"Parsnip": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Beetroot": {"Alluvial": 475, "Black": 925, "Red": 1325, "Laterite": 1850, "Desert": 3050, "Mountain": 925, "Saline": 1925, "Peaty and Marshy": 925},
+"Cabbage": {"Alluvial": 325, "Black": 650, "Red": 1150, "Laterite": 1650, "Desert": 2700, "Mountain": 775, "Saline": 1550, "Peaty and Marshy": 775},
+"Cauliflower": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Kale": {"Alluvial": 250, "Black": 500, "Red": 900, "Laterite": 1300, "Desert": 2200, "Mountain": 600, "Saline": 1100, "Peaty and Marshy": 600},
+"Leek": {"Alluvial": 475, "Black": 925, "Red": 1325, "Laterite": 1850, "Desert": 3050, "Mountain": 925, "Saline": 1925, "Peaty and Marshy": 925},
+"Chard": {"Alluvial": 325, "Black": 650, "Red": 1150, "Laterite": 1650, "Desert": 2700, "Mountain": 775, "Saline": 1550, "Peaty and Marshy": 775},
+"Bok Choy": {"Alluvial": 250, "Black": 500, "Red": 900, "Laterite": 1300, "Desert": 2200, "Mountain": 600, "Saline": 1100, "Peaty and Marshy": 600},
+"Mustard": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Arugula": {"Alluvial": 125, "Black": 325, "Red": 650, "Laterite": 1150, "Desert": 1900, "Mountain": 575, "Saline": 850, "Peaty and Marshy": 575},
+"Watercress": {"Alluvial": 250, "Black": 500, "Red": 900, "Laterite": 1300, "Desert": 2200, "Mountain": 600, "Saline": 1100, "Peaty and Marshy": 600},
+"Endive": {"Alluvial": 325, "Black": 650, "Red": 1150, "Laterite": 1650, "Desert": 2700, "Mountain": 775, "Saline": 1550, "Peaty and Marshy": 775},
+"Escarole": {"Alluvial": 250, "Black": 500, "Red": 900, "Laterite": 1300, "Desert": 2200, "Mountain": 600, "Saline": 1100, "Peaty and Marshy": 600},
+"Fennel": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Kohlrabi": {"Alluvial": 325, "Black": 650, "Red": 1150, "Laterite": 1650, "Desert": 2700, "Mountain": 775, "Saline": 1550, "Peaty and Marshy": 775},
+"Pumpkin": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Sweet Potato": {"Alluvial": 325, "Black": 650, "Red": 1150, "Laterite": 1650, "Desert": 2700, "Mountain": 775, "Saline": 1550, "Peaty and Marshy": 775},
+"Yams": {"Alluvial": 250, "Black": 500, "Red": 900, "Laterite": 1300, "Desert": 2200, "Mountain": 600, "Saline": 1100, "Peaty and Marshy": 600},
+"Taro": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Ginger": {"Alluvial": 475, "Black": 925, "Red": 1325, "Laterite": 1850, "Desert": 3050, "Mountain": 925, "Saline": 1925, "Peaty and Marshy": 925},
+"Turmeric": {"Alluvial": 325, "Black": 650, "Red": 1150, "Laterite": 1650, "Desert": 2700, "Mountain": 775, "Saline": 1550, "Peaty and Marshy": 775},
+"Cinnamon": {"Alluvial": 250, "Black": 500, "Red": 900, "Laterite": 1300, "Desert": 2200, "Mountain": 600, "Saline": 1100, "Peaty and Marshy": 600},
+"Nutmeg": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Cardamom": {"Alluvial": 475, "Black": 925, "Red": 1325, "Laterite": 1850, "Desert": 3050, "Mountain": 925, "Saline": 1925, "Peaty and Marshy": 925},
+"Saffron": {"Alluvial": 600, "Black": 1000, "Red": 1400, "Laterite": 2000, "Desert": 3250, "Mountain": 1200, "Saline": 2100, "Peaty and Marshy": 1200},
+"Poppy Seeds": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Sesame Seeds": {"Alluvial": 325, "Black": 650, "Red": 1150, "Laterite": 1650, "Desert": 2700, "Mountain": 775, "Saline": 1550, "Peaty and Marshy": 775},
+"Sunflower Seeds": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Pumpkin Seeds": {"Alluvial": 475, "Black": 925, "Red": 1325, "Laterite": 1850, "Desert": 3050, "Mountain": 925, "Saline": 1925, "Peaty and Marshy": 925},
+"Chia Seeds": {"Alluvial": 250, "Black": 500, "Red": 900, "Laterite": 1300, "Desert": 2200, "Mountain": 600, "Saline": 1100, "Peaty and Marshy": 600},
+"Flaxseeds": {"Alluvial": 325, "Black": 650, "Red": 1150, "Laterite": 1650, "Desert": 2700, "Mountain": 775, "Saline": 1550, "Peaty and Marshy": 775},
+"Hemp Seeds": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Quinoa Seeds": {"Alluvial": 475, "Black": 925, "Red": 1325, "Laterite": 1850, "Desert": 3050, "Mountain": 925, "Saline": 1925, "Peaty and Marshy": 925},
+"Amaranth": {"Alluvial": 360, "Black": 720, "Red": 1080, "Laterite": 1440, "Desert": 2400, "Mountain": 720, "Saline": 1440, "Peaty and Marshy": 720},
+"Buckwheat": {"Alluvial": 440, "Black": 880, "Red": 1320, "Laterite": 1760, "Desert": 2880, "Mountain": 880, "Saline": 1760, "Peaty and Marshy": 880},
+"Millet": {"Alluvial": 300, "Black": 600, "Red": 900, "Laterite": 1200, "Desert": 2000, "Mountain": 600, "Saline": 1200, "Peaty and Marshy": 600},
+"Oats": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Rye": {"Alluvial": 360, "Black": 720, "Red": 1080, "Laterite": 1440, "Desert": 2400, "Mountain": 720, "Saline": 1440, "Peaty and Marshy": 720},
+"Sorghum": {"Alluvial": 300, "Black": 600, "Red": 900, "Laterite": 1200, "Desert": 2000, "Mountain": 600, "Saline": 1200, "Peaty and Marshy": 600},
+"Triticale": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Wheat": {"Alluvial": 440, "Black": 880, "Red": 1320, "Laterite": 1760, "Desert": 2880, "Mountain": 880, "Saline": 1760, "Peaty and Marshy": 880},
+"Barley": {"Alluvial": 360, "Black": 720, "Red": 1080, "Laterite": 1440, "Desert": 2400, "Mountain": 720, "Saline": 1440, "Peaty and Marshy": 720},
+"Capers": {"Alluvial": 280, "Black": 560, "Red": 840, "Laterite": 1120, "Desert": 1880, "Mountain": 560, "Saline": 1120, "Peaty and Marshy": 560},
+"Caraway": {"Alluvial": 320, "Black": 640, "Red": 960, "Laterite": 1280, "Desert": 2080, "Mountain": 640, "Saline": 1280, "Peaty and Marshy": 640},
+"Coriander": {"Alluvial": 360, "Black": 720, "Red": 1080, "Laterite": 1440, "Desert": 2400, "Mountain": 720, "Saline": 1440, "Peaty and Marshy": 720},
+"Dill": {"Alluvial": 240, "Black": 480, "Red": 720, "Laterite": 960, "Desert": 1560, "Mountain": 480, "Saline": 960, "Peaty and Marshy": 480},
+"Fennel Seeds": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Fenugreek": {"Alluvial": 320, "Black": 640, "Red": 960, "Laterite": 1280, "Desert": 2080, "Mountain": 640, "Saline": 1280, "Peaty and Marshy": 640},
+"Garlic": {"Alluvial": 360, "Black": 720, "Red": 1080, "Laterite": 1440, "Desert": 2400, "Mountain": 720, "Saline": 1440, "Peaty and Marshy": 720},
+"Onion Seeds": {"Alluvial": 280, "Black": 560, "Red": 840, "Laterite": 1120, "Desert": 1880, "Mountain": 560, "Saline": 1120, "Peaty and Marshy": 560},
+"Parsley": {"Alluvial": 240, "Black": 480, "Red": 720, "Laterite": 960, "Desert": 1560, "Mountain": 480, "Saline": 960, "Peaty and Marshy": 480},
+"Rosemary": {"Alluvial": 200, "Black": 400, "Red": 600, "Laterite": 800, "Desert": 1300, "Mountain": 400, "Saline": 800, "Peaty and Marshy": 400},
+"Sage": {"Alluvial": 240, "Black": 480, "Red": 720, "Laterite": 960, "Desert": 1560, "Mountain": 480, "Saline": 960, "Peaty and Marshy": 480},
+"Thyme": {"Alluvial": 280, "Black": 560, "Red": 840, "Laterite": 1120, "Desert": 1880, "Mountain": 560, "Saline": 1120, "Peaty and Marshy": 560},
+"Lavender": {"Alluvial": 320, "Black": 640, "Red": 960, "Laterite": 1280, "Desert": 2080, "Mountain": 640, "Saline": 1280, "Peaty and Marshy": 640},
+"Marjoram": {"Alluvial": 360, "Black": 720, "Red": 1080, "Laterite": 1440, "Desert": 2400, "Mountain": 720, "Saline": 1440, "Peaty and Marshy": 720},
+"Oregano": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Basil": {"Alluvial": 200, "Black": 400, "Red": 600, "Laterite": 800, "Desert": 1300, "Mountain": 400, "Saline": 800, "Peaty and Marshy": 400},
+"Chamomile": {"Alluvial": 240, "Black": 480, "Red": 720, "Laterite": 960, "Desert": 1560, "Mountain": 480, "Saline": 960, "Peaty and Marshy": 480},
+"Hibiscus": {"Alluvial": 280, "Black": 560, "Red": 840, "Laterite": 1120, "Desert": 1880, "Mountain": 560, "Saline": 1120, "Peaty and Marshy": 560},
+"Licorice": {"Alluvial": 440, "Black": 880, "Red": 1320, "Laterite": 1760, "Desert": 2880, "Mountain": 880, "Saline": 1760, "Peaty and Marshy": 880},
+"Ginseng": {"Alluvial": 500, "Black": 1000, "Red": 1500, "Laterite": 2000, "Desert": 3300, "Mountain": 1000, "Saline": 2000, "Peaty and Marshy": 1000},
+"Echinacea": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Slippery Elm": {"Alluvial": 360, "Black": 720, "Red": 1080, "Laterite": 1440, "Desert": 2400, "Mountain": 720, "Saline": 1440, "Peaty and Marshy": 720},
+"Marshmallow": {"Alluvial": 440, "Black": 880, "Red": 1320, "Laterite": 1760, "Desert": 2880, "Mountain": 880, "Saline": 1760, "Peaty and Marshy": 880},
+"Burdock": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Plantain": {"Alluvial": 440, "Black": 880, "Red": 1320, "Laterite": 1760, "Desert": 2880, "Mountain": 880, "Saline": 1760, "Peaty and Marshy": 880},
+"Alfalfa": {"Alluvial": 500, "Black": 1000, "Red": 1500, "Laterite": 2000, "Desert": 3300, "Mountain": 1000, "Saline": 2000, "Peaty and Marshy": 1000},
+"Bamboo": {"Alluvial": 560, "Black": 1120, "Red": 1680, "Laterite": 2240, "Desert": 3640, "Mountain": 1120, "Saline": 2240, "Peaty and Marshy": 1120},
+"Cattail": {"Alluvial": 480, "Black": 960, "Red": 1440, "Laterite": 1920, "Desert": 3120, "Mountain": 960, "Saline": 1920, "Peaty and Marshy": 960},
+"Watercress": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Borage": {"Alluvial": 440, "Black": 880, "Red": 1320, "Laterite": 1760, "Desert": 2880, "Mountain": 880, "Saline": 1760, "Peaty and Marshy": 880},
+"Chervil": {"Alluvial": 360, "Black": 720, "Red": 1080, "Laterite": 1440, "Desert": 2400, "Mountain": 720, "Saline": 1440, "Peaty and Marshy": 720},
+"Chives": {"Alluvial": 400, "Black": 800, "Red": 1200, "Laterite": 1700, "Desert": 2800, "Mountain": 1000, "Saline": 1700, "Peaty and Marshy": 1000},
+"Galangal": {"Alluvial": 520, "Black": 1040, "Red": 1560, "Laterite": 2080, "Desert": 3420, "Mountain": 1040, "Saline": 2080, "Peaty and Marshy": 1040},
+"Lemon Balm": {"Alluvial": 480, "Black": 960, "Red": 1440, "Laterite": 1920, "Desert": 3120, "Mountain": 960, "Saline": 1920, "Peaty and Marshy": 960},
+"Lovage": {"Alluvial": 560, "Black": 1120, "Red": 1680, "Laterite": 2240, "Desert": 3640, "Mountain": 1120, "Saline": 2240, "Peaty and Marshy": 1120},
+"Marula": {"Alluvial": 600, "Black": 1200, "Red": 1800, "Laterite": 2400, "Desert": 3960, "Mountain": 1200, "Saline": 2400, "Peaty and Marshy": 1200},
+"Meadowsweet": {"Alluvial": 440, "Black": 880, "Red": 1320, "Laterite": 1760, "Desert": 2880, "Mountain": 880, "Saline": 1760, "Peaty and Marshy": 880},
+"Passionflower": {"Alluvial": 480, "Black": 960, "Red": 1440, "Laterite": 1920, "Desert": 3120, "Mountain": 960, "Saline": 1920, "Peaty and Marshy": 960},
+"Sarsaparilla": {"Alluvial": 520, "Black": 1040, "Red": 1560, "Laterite": 2080, "Desert": 3420, "Mountain": 1040, "Saline": 2080, "Peaty and Marshy": 1040},
+"Senna": {"Alluvial": 560, "Black": 1120, "Red": 1680, "Laterite": 2240, "Desert": 3640, "Mountain": 1120, "Saline": 2240, "Peaty and Marshy": 1120},
+"Vetiver": {"Alluvial": 600, "Black": 1200, "Red": 1800, "Laterite": 2400, "Desert": 3960, "Mountain": 1200, "Saline": 2400, "Peaty and Marshy": 1200},
+"Yacon": {"Alluvial": 640, "Black": 1280, "Red": 1920, "Laterite": 2560, "Desert": 4160, "Mountain": 1280, "Saline": 2560, "Peaty and Marshy": 1280},
+"Yerba Mate": {"Alluvial": 560, "Black": 1120, "Red": 1680, "Laterite": 2240, "Desert": 3640, "Mountain": 1120, "Saline": 2240, "Peaty and Marshy": 1120},
+"Ziziphus": {"Alluvial": 600, "Black": 1200, "Red": 1800, "Laterite": 2400, "Desert": 3960, "Mountain": 1200, "Saline": 2400, "Peaty and Marshy": 1200},
+"Agastache": {"Alluvial": 480, "Black": 960, "Red": 1440, "Laterite": 1920, "Desert": 3120, "Mountain": 960, "Saline": 1920, "Peaty and Marshy": 960},
+"Angelica": {"Alluvial": 520, "Black": 1040, "Red": 1560, "Laterite": 2080, "Desert": 3420, "Mountain": 1040, "Saline": 2080, "Peaty and Marshy": 1040},
+"Arnica": {"Alluvial": 440, "Black": 880, "Red": 1320, "Laterite": 1760, "Desert": 2880, "Mountain": 880, "Saline": 1760, "Peaty and Marshy": 880},
+"Ashwagandha": {"Alluvial": 680, "Black": 1360, "Red": 2040, "Laterite": 2720, "Desert": 4480, "Mountain": 1360, "Saline": 2720, "Peaty and Marshy": 1360},
+"Bay Leaf": {"Alluvial": 600, "Black": 1200, "Red": 1800, "Laterite": 2400, "Desert": 3960, "Mountain": 1200, "Saline": 2400, "Peaty and Marshy": 1200},
+"Boldo": {"Alluvial": 520, "Black": 1040, "Red": 1560, "Laterite": 2080, "Desert": 3420, "Mountain": 1040, "Saline": 2080, "Peaty and Marshy": 1040},
+"Buchu": {"Alluvial": 560, "Black": 1120, "Red": 1680, "Laterite": 2240, "Desert": 3640, "Mountain": 1120, "Saline": 2240, "Peaty and Marshy": 1120},
+"Calendula": {"Alluvial": 480, "Black": 960, "Red": 1440, "Laterite": 1920, "Desert": 3120, "Mountain": 960, "Saline": 1920, "Peaty and Marshy": 960},
+"Carob": {"Alluvial": 640, "Black": 1280, "Red": 1920, "Laterite": 2560, "Desert": 4160, "Mountain": 1280, "Saline": 2560, "Peaty and Marshy": 1280},
+"Cascara": {"Alluvial": 600, "Black": 1200, "Red": 1800, "Laterite": 2400, "Desert": 3960, "Mountain": 1200, "Saline": 2400, "Peaty and Marshy": 1240},
+"Corydalis": {"Alluvial": 560, "Black": 1120, "Red": 1680, "Laterite": 2240, "Desert": 3640, "Mountain": 1120, "Saline": 2240, "Peaty and Marshy": 1120},
+"Devil's Claw": {"Alluvial": 640, "Black": 1280, "Red": 1920, "Laterite": 2560, "Desert": 4160, "Mountain": 1280, "Saline": 2560, "Peaty and Marshy": 1280},
+"Eucalyptus": {"Alluvial": 680, "Black": 1360, "Red": 2040, "Laterite": 2720, "Desert": 4480, "Mountain": 1360, "Saline": 2720, "Peaty and Marshy": 1360},
+"Fo-Ti": {"Alluvial": 600, "Black": 1200, "Red": 1800, "Laterite": 2400, "Desert": 3960, "Mountain": 1200, "Saline": 2400, "Peaty and Marshy": 1200},
+"Ginkgo Biloba": {"Alluvial": 720, "Black": 1440, "Red": 2160, "Laterite": 2880, "Desert": 4752, "Mountain": 1440, "Saline": 2880, "Peaty and Marshy": 1440},
+"Gymnema": {"Alluvial": 560, "Black": 1120, "Red": 1680, "Laterite": 2240, "Desert": 3640, "Mountain": 1120, "Saline": 2240, "Peaty and Marshy": 1120},
+"Hawthorn": {"Alluvial": 640, "Black": 1280, "Red": 1920, "Laterite": 2560, "Desert": 4160, "Mountain": 1280, "Saline": 2560, "Peaty and Marshy": 1280},
+"Irvingia": {"Alluvial": 760, "Black": 1520, "Red": 2280, "Laterite": 3040, "Desert": 5016, "Mountain": 1520, "Saline": 3040, "Peaty and Marshy": 1520},
+"Jujube": {"Alluvial": 600, "Black": 1200, "Red": 1800, "Laterite": 2400, "Desert": 3960, "Mountain": 1200, "Saline": 2400, "Peaty and Marshy": 1200},
+"Knotweed": {"Alluvial": 520, "Black": 1040, "Red": 1560, "Laterite": 2080, "Desert": 3420, "Mountain": 1040, "Saline": 2080, "Peaty and Marshy": 1040},
+"Ligustrum": {"Alluvial": 680, "Black": 1360, "Red": 2040, "Laterite": 2720, "Desert": 4480, "Mountain": 1360, "Saline": 2720, "Peaty and Marshy": 1360},
+"Maitake": {"Alluvial": 720, "Black": 1440, "Red": 2160, "Laterite": 2880, "Desert": 4752, "Mountain": 1440, "Saline": 2880, "Peaty and Marshy": 1440},
+"Milk Thistle": {"Alluvial": 640, "Black": 1280, "Red": 1920, "Laterite": 2560, "Desert": 4160, "Mountain": 1280, "Saline": 2560, "Peaty and Marshy": 1280},
+"Neem": {"Alluvial": 600, "Black": 1200, "Red": 1800, "Laterite": 2400, "Desert": 3960, "Mountain": 1200, "Saline": 2400, "Peaty and Marshy": 1200},
+"Oregano": {"Alluvial": 560, "Black": 1120, "Red": 1680, "Laterite": 2240, "Desert": 3640, "Mountain": 1120, "Saline": 2240, "Peaty and Marshy": 1120},
+"Pau D'Arco": {"Alluvial": 800, "Black": 1600, "Red": 2400, "Laterite": 3200, "Desert": 5280, "Mountain": 1600, "Saline": 3200, "Peaty and Marshy": 1600},
+"Periwinkle": {"Alluvial": 760, "Black": 1520, "Red": 2280, "Laterite": 3040, "Desert": 5016, "Mountain": 1520, "Saline": 3040, "Peaty and Marshy": 1520},
+"Quassia": {"Alluvial": 840, "Black": 1680, "Red": 2520, "Laterite": 3360, "Desert": 5880, "Mountain": 1680, "Saline": 3360, "Peaty and Marshy": 1680},
+"Red Clover": {"Alluvial": 720, "Black": 1440, "Red": 2160, "Laterite": 2880, "Desert": 4752, "Mountain": 1440, "Saline": 2880, "Peaty and Marshy": 1440},
+"Reishi": {"Alluvial": 880, "Black": 1760, "Red": 2640, "Laterite": 3520, "Desert": 6160, "Mountain": 1760, "Saline": 3520, "Peaty and Marshy": 1760},
+"Rhodiola": {"Alluvial": 800, "Black": 1600, "Red": 2400, "Laterite": 3200, "Desert": 5280, "Mountain": 1600, "Saline": 3200, "Peaty and Marshy": 1600},
+"Saffron": {"Alluvial": 920, "Black": 1840, "Red": 2760, "Laterite": 3680, "Desert": 6480, "Mountain": 1840, "Saline": 3680, "Peaty and Marshy": 1840},
+"Schisandra": {"Alluvial": 840, "Black": 1680, "Red": 2520, "Laterite": 3360, "Desert": 5880, "Mountain": 1680, "Saline": 3360, "Peaty and Marshy": 1680},
+"Sea Buckthorn": {"Alluvial": 960, "Black": 1920, "Red": 2880, "Laterite": 3840, "Desert": 6720, "Mountain": 1920, "Saline": 3840, "Peaty and Marshy": 1920},
+"Slippery Elm": {"Alluvial": 880, "Black": 1760, "Red": 2640, "Laterite": 3520, "Desert": 6160, "Mountain": 1760, "Saline": 3520, "Peaty and Marshy": 1760},
+"St. John's Wort": {"Alluvial": 920, "Black": 1840, "Red": 2760, "Laterite": 3680, "Desert": 6480, "Mountain": 1840, "Saline": 3680, "Peaty and Marshy": 1840},
+"Botswana Tsamma": {"Alluvial": 375, "Black": 450, "Red": 525, "Laterite": 600, "Desert": 725, "Mountain": 300},
+"Turmeric": {"Alluvial": 500, "Black": 600, "Red": 700, "Laterite": 800, "Desert": 1000, "Mountain": 500},
+"Uva Ursi": {"Alluvial": 420, "Black": 504, "Red": 588, "Laterite": 672, "Desert": 840, "Mountain": 420},
+"Valerian": {"Alluvial": 480, "Black": 576, "Red": 672, "Laterite": 768, "Desert": 960, "Mountain": 480},
+"Wild Yam": {"Alluvial": 440, "Black": 528, "Red": 616, "Laterite": 704, "Desert": 880, "Mountain": 440},
+"Yohimbe": {"Alluvial": 500, "Black": 600, "Red": 700, "Laterite": 800, "Desert": 1000, "Mountain": 500},
+"Zanthoxylum": {"Alluvial": 520, "Black": 624, "Red": 728, "Laterite": 832, "Desert": 1040, "Mountain": 520},
+"Acai Berries": {"Alluvial": 540, "Black": 648, "Red": 756, "Laterite": 864, "Desert": 1080, "Mountain": 540},
+"Acerola": {"Alluvial": 560, "Black": 672, "Red": 784, "Laterite": 896, "Desert": 1120, "Mountain": 560},
+"Alfalfa": {"Alluvial": 580, "Black": 696, "Red": 812, "Laterite": 928, "Desert": 1160, "Mountain": 580},
+"Amaranth": {"Alluvial": 600, "Black": 720, "Red": 840, "Laterite": 960, "Desert": 1200, "Mountain": 600},
+"Anise": {"Alluvial": 620, "Black": 744, "Red": 868, "Laterite": 992, "Desert": 1240, "Mountain": 620},
+"Apricot Kernel": {"Alluvial": 640, "Black": 768, "Red": 896, "Laterite": 1024, "Desert": 1280, "Mountain": 640},
+"Arrowroot": {"Alluvial": 660, "Black": 792, "Red": 924, "Laterite": 1056, "Desert": 1320, "Mountain": 660},
+"Artichoke": {"Alluvial": 680, "Black": 816, "Red": 952, "Laterite": 1088, "Desert": 1360, "Mountain": 680},
+"Asparagus": {"Alluvial": 700, "Black": 840, "Red": 980, "Laterite": 1120, "Desert": 1400, "Mountain": 700},
+"Avocado": {"Alluvial": 720, "Black": 864, "Red": 1008, "Laterite": 1152, "Desert": 1440, "Mountain": 720},
+"Banana Flower": {"Alluvial": 740, "Black": 888, "Red": 1036, "Laterite": 1184, "Desert": 1480, "Mountain": 740},
+"Betel Leaf": {"Alluvial": 760, "Black": 912, "Red": 1064, "Laterite": 1216, "Desert": 1520, "Mountain": 760},
+"Bitter Melon": {"Alluvial": 780, "Black": 936, "Red": 1092, "Laterite": 1248, "Desert": 1560, "Mountain": 780},
+"Blackberry": {"Alluvial": 800, "Black": 960, "Red": 1120, "Laterite": 1280, "Desert": 1600, "Mountain": 800},
+"Bitter Melon": {"Alluvial": 780, "Black": 1560, "Red": 2340, "Laterite": 3120, "Desert": 6200, "Mountain": 1560},
+"Blackberry": {"Alluvial": 800, "Black": 1600, "Red": 2400, "Laterite": 3200, "Desert": 6400, "Mountain": 800},
+"Blackcurrant": {"Alluvial": 820, "Black": 1640, "Red": 2460, "Laterite": 3280, "Desert": 6600, "Mountain": 820},
+"Blueberry": {"Alluvial": 840, "Black": 1680, "Red": 2520, "Laterite": 3360, "Desert": 6800, "Mountain": 840},
+"Borage": {"Alluvial": 860, "Black": 1720, "Red": 2580, "Laterite": 3440, "Desert": 7000, "Mountain": 860},
+"Burdock": {"Alluvial": 880, "Black": 1760, "Red": 2640, "Laterite": 3520, "Desert": 7200, "Mountain": 880},
+"Cabbage": {"Alluvial": 900, "Black": 1800, "Red": 2700, "Laterite": 3600, "Desert": 7400, "Mountain": 900},
+"Capers": {"Alluvial": 920, "Black": 1840, "Red": 2760, "Laterite": 3680, "Desert": 7600, "Mountain": 920},
+"Cardamom": {"Alluvial": 940, "Black": 1880, "Red": 2820, "Laterite": 3760, "Desert": 7800, "Mountain": 940},
+"Carrot": {"Alluvial": 960, "Black": 1920, "Red": 2880, "Laterite": 3840, "Desert": 8000, "Mountain": 960},
+"Cassava": {"Alluvial": 980, "Black": 1960, "Red": 2940, "Laterite": 3920, "Desert": 8200, "Mountain": 980},
+"Celery": {"Alluvial": 1000, "Black": 2000, "Red": 3000, "Laterite": 4000, "Desert": 8400, "Mountain": 1000},
+"Chervil": {"Alluvial": 1020, "Black": 2040, "Red": 3060, "Laterite": 4080, "Desert": 8600, "Mountain": 1020},
+"Chicory": {"Alluvial": 1040, "Black": 2080, "Red": 3120, "Laterite": 4160, "Desert": 8800, "Mountain": 1040},
+"Chili Pepper": {"Alluvial": 1060, "Black": 2120, "Red": 3180, "Laterite": 4240, "Desert": 9000, "Mountain": 1060},
+"Cinnamon": {"Alluvial": 1080, "Black": 2160, "Red": 3240, "Laterite": 4320, "Desert": 9200, "Mountain": 1080},
+"Cloves": {"Alluvial": 1100, "Black": 2200, "Red": 3300, "Laterite": 4400, "Desert": 9400, "Mountain": 1100},
+"Coriander": {"Alluvial": 1120, "Black": 2240, "Red": 3360, "Laterite": 4480, "Desert": 9600, "Mountain": 1120},
+"Cranberry": {"Alluvial": 1140, "Black": 2280, "Red": 3420, "Laterite": 4560, "Desert": 9800, "Mountain": 1140},
+"Cucumber": {"Alluvial": 1160, "Black": 2320, "Red": 3480, "Laterite": 4640, "Desert": 10000, "Mountain": 2320},
+"Dandelion": {"Alluvial": 1180, "Black": 2360, "Red": 3540, "Laterite": 4720, "Desert": 10200, "Mountain": 2360},
+"Dill": {"Alluvial": 1200, "Black": 2400, "Red": 3600, "Laterite": 4800, "Desert": 10400, "Mountain": 2400},
+"Elderberry": {"Alluvial": 1220, "Black": 2440, "Red": 3660, "Laterite": 4880, "Desert": 10600, "Mountain": 2440},
+"Epazote": {"Alluvial": 1240, "Black": 2480, "Red": 3720, "Laterite": 5000, "Desert": 10800, "Mountain": 2480},
+"Fennel": {"Alluvial": 1260, "Black": 2520, "Red": 3780, "Laterite": 5120, "Desert": 11000, "Mountain": 2520},
+"Fenugreek": {"Alluvial": 1280, "Black": 2560, "Red": 3840, "Laterite": 5240, "Desert": 11200, "Mountain": 2560},
+"Garlic": {"Alluvial": 1300, "Black": 2600, "Red": 3900, "Laterite": 5360, "Desert": 11400, "Mountain": 2600},
+"Ginger": {"Alluvial": 1320, "Black": 2640, "Red": 3960, "Laterite": 5480, "Desert": 11600, "Mountain": 2640},
+"Grapefruit": {"Alluvial": 1340, "Black": 2680, "Red": 4020, "Laterite": 5600, "Desert": 11800, "Mountain": 2680},
+"Guava": {"Alluvial": 1360, "Black": 2720, "Red": 4080, "Laterite": 5720, "Desert": 12000, "Mountain": 2720},
+"Horseradish": {"Alluvial": 1380, "Black": 2760, "Red": 4140, "Laterite": 5840, "Desert": 12200, "Mountain": 2760},
+"Jasmine": {"Alluvial": 1400, "Black": 2800, "Red": 4200, "Laterite": 6000, "Desert": 12400, "Mountain": 2800},
+"Kale": {"Alluvial": 1420, "Black": 2840, "Red": 4260, "Laterite": 6120, "Desert": 12600, "Mountain": 2840},
+"Kohlrabi": {"Alluvial": 1440, "Black": 2880, "Red": 4320, "Laterite": 6240, "Desert": 12800, "Mountain": 2880},
+"Leek": {"Alluvial": 1460, "Black": 2920, "Red": 4380, "Laterite": 6360, "Desert": 13000, "Mountain": 2920},
+"Lemon": {"Alluvial": 1480, "Black": 2960, "Red": 4440, "Laterite": 6480, "Desert": 13200, "Mountain": 2960},
+"Lettuce": {"Alluvial": 1500, "Black": 3000, "Red": 4500, "Laterite": 6600, "Desert": 13400, "Mountain": 3000},
+"Marjoram": {"Alluvial": 1520, "Black": 3040, "Red": 4560, "Laterite": 6720, "Desert": 13600, "Mountain": 3040},
+"Melon": {"Alluvial": 1540, "Black": 3080, "Red": 4620, "Laterite": 6880, "Desert": 13800, "Mountain": 3080},
+"Mint": {"Alluvial": 1560, "Black": 3120, "Red": 4680, "Laterite": 7040, "Desert": 14000, "Mountain": 3120},
+"Mustard": {"Alluvial": 1580, "Black": 3160, "Red": 4740, "Laterite": 7200, "Desert": 14200, "Mountain": 3160},
+"Nettle": {"Alluvial": 1600, "Black": 3200, "Red": 4800, "Laterite": 7360, "Desert": 14400, "Mountain": 3200},
+"Okra": {"Alluvial": 1620, "Black": 3240, "Red": 4860, "Laterite": 7520, "Desert": 14600, "Mountain": 3240},
+"Olives": {"Alluvial": 1640, "Black": 3280, "Red": 4920, "Laterite": 7680, "Desert": 14800, "Mountain": 3280},
+"Onion": {"Alluvial": 1660, "Black": 3320, "Red": 4980, "Laterite": 7840, "Desert": 15000, "Mountain": 3320},
+"Oregano": {"Alluvial": 1680, "Black": 3360, "Red": 5040, "Laterite": 8000, "Desert": 15200, "Mountain": 3360},
+"Parsley": {"Alluvial": 1700, "Black": 3400, "Red": 5100, "Laterite": 8160, "Desert": 15400, "Mountain": 3400},
+"Parsnip": {"Alluvial": 1720, "Black": 3440, "Red": 5160, "Laterite": 8320, "Desert": 15600, "Mountain": 3440},
+"Peach": {"Alluvial": 1740, "Black": 3480, "Red": 5220, "Laterite": 8480, "Desert": 15800, "Mountain": 3480},
+"Pear": {"Alluvial": 1760, "Black": 3520, "Red": 5280, "Laterite": 8640, "Desert": 16000, "Mountain": 3520},
+"Pepper": {"Alluvial": 1780, "Black": 3560, "Red": 5340, "Laterite": 8800, "Desert": 16200, "Mountain": 3560},
+"Plum": {"Alluvial": 1800, "Black": 3600, "Red": 5400, "Laterite": 9000, "Desert": 16400, "Mountain": 3600},
+"Pomegranate": {"Alluvial": 1820, "Black": 3640, "Red": 5460, "Laterite": 9160, "Desert": 16600, "Mountain": 3640},
+"Pumpkin": {"Alluvial": 1840, "Black": 3680, "Red": 5520, "Laterite": 9320, "Desert": 16800, "Mountain": 3680},
+"Radicchio": {"Alluvial": 1860, "Black": 3720, "Red": 5580, "Laterite": 9480, "Desert": 17000, "Mountain": 3720},
+"Radish": {"Alluvial": 1880, "Black": 3760, "Red": 5640, "Laterite": 9640, "Desert": 17200, "Mountain": 3760},
+"Raspberry": {"Alluvial": 1900, "Black": 3800, "Red": 5700, "Laterite": 9800, "Desert": 17400, "Mountain": 3800},
+"Rhubarb": {"Alluvial": 1920, "Black": 3840, "Red": 5760, "Laterite": 10000, "Desert": 17600, "Mountain": 3840},
+"Saffron": {"Alluvial": 1940, "Black": 3880, "Red": 5820, "Laterite": 10160, "Desert": 17800, "Mountain": 3880},
+"Sage": {"Alluvial": 1960, "Black": 3920, "Red": 5880, "Laterite": 10320, "Desert": 18000, "Mountain": 3920},
+"Spinach": {"Alluvial": 1980, "Black": 3960, "Red": 5940, "Laterite": 10480, "Desert": 18200, "Mountain": 3960},
+"Squash": {"Alluvial": 2000, "Black": 4000, "Red": 6000, "Laterite": 10640, "Desert": 18400, "Mountain": 4000},
+"Strawberry": {"Alluvial": 2020, "Black": 4040, "Red": 6060, "Laterite": 10800, "Desert": 18600, "Mountain": 4040},
+"Tangerine": {"Alluvial": 2040, "Black": 4080, "Red": 6120, "Laterite": 10960, "Desert": 18800, "Mountain": 4080},
+"Thyme": {"Alluvial": 2060, "Black": 4120, "Red": 6180, "Laterite": 11120, "Desert": 19000, "Mountain": 4120},
+"Tomato": {"Alluvial": 2080, "Black": 4160, "Red": 6240, "Laterite": 11280, "Desert": 19200, "Mountain": 4160},
+"Turmeric": {"Alluvial": 2100, "Black": 4200, "Red": 6300, "Laterite": 11440, "Desert": 19400, "Mountain": 4200},
+"Turnip": {"Alluvial": 2120, "Black": 4240, "Red": 6360, "Laterite": 11600, "Desert": 19600, "Mountain": 4240},
+"Ulluco": {"Alluvial": 2140, "Black": 4280, "Red": 6420, "Laterite": 11760, "Desert": 19800, "Mountain": 4280},
+"Valerian": {"Alluvial": 2160, "Black": 4320, "Red": 6480, "Laterite": 11920, "Desert": 20000, "Mountain": 4320},
+"Watercress": {"Alluvial": 2180, "Black": 4360, "Red": 6540, "Laterite": 12080, "Desert": 20200, "Mountain": 4360},
+"Watermelon": {"Alluvial": 2200, "Black": 4400, "Red": 6600, "Laterite": 12240, "Desert": 20400, "Mountain": 4400},
+"Yacon": {"Alluvial": 2220, "Black": 4440, "Red": 6660, "Laterite": 12400, "Desert": 20600, "Mountain": 4440},
+"Pumpkin": {"Alluvial": 1840, "Black": 3680, "Red": 5520, "Laterite": 9320, "Desert": 16800, "Mountain": 3680},
+"Radicchio": {"Alluvial": 1860, "Black": 3720, "Red": 5580, "Laterite": 9480, "Desert": 17000, "Mountain": 3720},
+"Radish": {"Alluvial": 1880, "Black": 3760, "Red": 5640, "Laterite": 9640, "Desert": 17200, "Mountain": 3760},
+"Raspberry": {"Alluvial": 1900, "Black": 3800, "Red": 5700, "Laterite": 9800, "Desert": 17400, "Mountain": 3800},
+"Rhubarb": {"Alluvial": 1920, "Black": 3840, "Red": 5760, "Laterite": 10000, "Desert": 17600, "Mountain": 3840},
+"Saffron": {"Alluvial": 1940, "Black": 3880, "Red": 5820, "Laterite": 10160, "Desert": 17800, "Mountain": 3880},
+"Sage": {"Alluvial": 1960, "Black": 3920, "Red": 5880, "Laterite": 10320, "Desert": 18000, "Mountain": 3920},
+"Spinach": {"Alluvial": 1980, "Black": 3960, "Red": 5940, "Laterite": 10480, "Desert": 18200, "Mountain": 3960},
+"Squash": {"Alluvial": 2000, "Black": 4000, "Red": 6000, "Laterite": 10640, "Desert": 18400, "Mountain": 4000},
+"Strawberry": {"Alluvial": 2020, "Black": 4040, "Red": 6060, "Laterite": 10800, "Desert": 18600, "Mountain": 4040},
+"Tangerine": {"Alluvial": 2040, "Black": 4080, "Red": 6120, "Laterite": 10960, "Desert": 18800, "Mountain": 4080},
+"Thyme": {"Alluvial": 2060, "Black": 4120, "Red": 6180, "Laterite": 11120, "Desert": 19000, "Mountain": 4120},
+"Tomato": {"Alluvial": 2080, "Black": 4160, "Red": 6240, "Laterite": 11280, "Desert": 19200, "Mountain": 4160},
+"Turmeric": {"Alluvial": 2100, "Black": 4200, "Red": 6300, "Laterite": 11440, "Desert": 19400, "Mountain": 4200},
+"Turnip": {"Alluvial": 2120, "Black": 4240, "Red": 6360, "Laterite": 11600, "Desert": 19600, "Mountain": 4240},
+"Ulluco": {"Alluvial": 2140, "Black": 4280, "Red": 6420, "Laterite": 11760, "Desert": 19800, "Mountain": 4280},
+"Valerian": {"Alluvial": 2160, "Black": 4320, "Red": 6480, "Laterite": 11920, "Desert": 20000, "Mountain": 4320},
+"Watercress": {"Alluvial": 2180, "Black": 4360, "Red": 6540, "Laterite": 12080, "Desert": 20200, "Mountain": 4360},
+"Watermelon": {"Alluvial": 2200, "Black": 4400, "Red": 6600, "Laterite": 12240, "Desert": 20400, "Mountain": 4400},
+"Yacon": {"Alluvial": 2220, "Black": 4440, "Red": 6660, "Laterite": 12400, "Desert": 20600, "Mountain": 4440},
+"Zucchini": {"Alluvial": 2240, "Black": 4480, "Red": 6720, "Laterite": 12560, "Desert": 20800, "Mountain": 4480},
+"Acorn Squash": {"Alluvial": 2260, "Black": 4520, "Red": 6780, "Laterite": 12720, "Desert": 21000, "Mountain": 4520},
+"Cardoon": {"Alluvial": 2280, "Black": 4560, "Red": 6840, "Laterite": 12880, "Desert": 21200, "Mountain": 4560},
+"Chayote": {"Alluvial": 2300, "Black": 4600, "Red": 6900, "Laterite": 13040, "Desert": 21400, "Mountain": 4600},
+"Daikon": {"Alluvial": 2320, "Black": 4640, "Red": 6960, "Laterite": 13200, "Desert": 21600, "Mountain": 4640},
+"Eggplant": {"Alluvial": 2340, "Black": 4680, "Red": 7020, "Laterite": 13360, "Desert": 21800, "Mountain": 4680},
+"Galangal": {"Alluvial": 2360, "Black": 4720, "Red": 7080, "Laterite": 13520, "Desert": 22000, "Mountain": 4720},
+"Ginger": {"Alluvial": 2380, "Black": 4760, "Red": 7140, "Laterite": 13680, "Desert": 22200, "Mountain": 4760},
+"Guanabana": {"Alluvial": 2400, "Black": 4800, "Red": 7200, "Laterite": 13840, "Desert": 22400, "Mountain": 4800},
+"Horseradish": {"Alluvial": 2420, "Black": 4840, "Red": 7260, "Laterite": 14000, "Desert": 22600, "Mountain": 4840},
+"Iceberg Lettuce": {"Alluvial": 2440, "Black": 4880, "Red": 7320, "Laterite": 14160, "Desert": 22800, "Mountain": 4880},
+"Jackfruit": {"Alluvial": 2460, "Black": 4920, "Red": 7380, "Laterite": 14320, "Desert": 23000, "Mountain": 4920},
+"Kale": {"Alluvial": 2480, "Black": 4960, "Red": 7440, "Laterite": 14480, "Desert": 23200, "Mountain": 4960},
+"Kohlrabi": {"Alluvial": 2500, "Black": 5000, "Red": 7500, "Laterite": 14640, "Desert": 23400, "Mountain": 5000},
+"Lemongrass": {"Alluvial": 2520, "Black": 5040, "Red": 7560, "Laterite": 14800, "Desert": 23600, "Mountain": 5040},
+"Lotus Root": {"Alluvial": 2540, "Black": 5080, "Red": 7620, "Laterite": 14960, "Desert": 23800, "Mountain": 5080},
+"Malabar Spinach": {"Alluvial": 2560, "Black": 5120, "Red": 7680, "Laterite": 15120, "Desert": 24000, "Mountain": 5120},
+"Mango": {"Alluvial": 2580, "Black": 5160, "Red": 7740, "Laterite": 15280, "Desert": 24200, "Mountain": 5160},
+"Melon": {"Alluvial": 2600, "Black": 5200, "Red": 7800, "Laterite": 15440, "Desert": 24400, "Mountain": 5200},
+"Mustard Greens": {"Alluvial": 2620, "Black": 5240, "Red": 7860, "Laterite": 15600, "Desert": 24600, "Mountain": 5240},
+"Nectarine": {"Alluvial": 2640, "Black": 5280, "Red": 7920, "Laterite": 15760, "Desert": 24800, "Mountain": 5280},
+"Okra": {"Alluvial": 2660, "Black": 5320, "Red": 7980, "Laterite": 15920, "Desert": 25000, "Mountain": 5320},
+"Olive": {"Alluvial": 2680, "Black": 5360, "Red": 8040, "Laterite": 16080, "Desert": 25200, "Mountain": 5360},
+"Onion": {"Alluvial": 2700, "Black": 5400, "Red": 8100, "Laterite": 16240, "Desert": 25400, "Mountain": 5400},
+"Papaya": {"Alluvial": 2720, "Black": 5440, "Red": 8160, "Laterite": 16400, "Desert": 25600, "Mountain": 5440},
+"Parsnip": {"Alluvial": 2740, "Black": 5480, "Red": 8220, "Laterite": 16560, "Desert": 25800, "Mountain": 5480},
+"Passion Fruit": {"Alluvial": 2760, "Black": 5520, "Red": 8280, "Laterite": 16720, "Desert": 26000, "Mountain": 5520},
+"Pear": {"Alluvial": 2780, "Black": 5560, "Red": 8340, "Laterite": 16880, "Desert": 26200, "Mountain": 5560},
+"Persimmon": {"Alluvial": 2800, "Black": 5600, "Red": 8400, "Laterite": 17040, "Desert": 26400, "Mountain": 5600},
+"Pistachio": {"Alluvial": 2820, "Black": 5640, "Red": 8460, "Laterite": 17200, "Desert": 26600, "Mountain": 5640},
+"Plum": {"Alluvial": 2840, "Black": 5680, "Red": 8520, "Laterite": 17360, "Desert": 26800, "Mountain": 5680},
+"Pomegranate": {"Alluvial": 2860, "Black": 5720, "Red": 8580, "Laterite": 17520, "Desert": 27000, "Mountain": 5720},
+"Pumpkin Seed": {"Alluvial": 2880, "Black": 5760, "Red": 8640, "Laterite": 17680, "Desert": 27200, "Mountain": 5760},
+"Quince": {"Alluvial": 2900, "Black": 5800, "Red": 8700, "Laterite": 17840, "Desert": 27400, "Mountain": 5800},
+"Radicchio": {"Alluvial": 2920, "Black": 5840, "Red": 8760, "Laterite": 18000, "Desert": 27600, "Mountain": 5840},
+"Rapini": {"Alluvial": 2940, "Black": 5880, "Red": 8820, "Laterite": 18160, "Desert": 27800, "Mountain": 5880},
+"Rhubarb": {"Alluvial": 2960, "Black": 5920, "Red": 8880, "Laterite": 18320, "Desert": 28000, "Mountain": 5920},
+"Rosemary": {"Alluvial": 2980, "Black": 5960, "Red": 8940, "Laterite": 18480, "Desert": 28200, "Mountain": 5960},
+"Salsify": {"Alluvial": 3000, "Black": 6000, "Red": 9000, "Laterite": 18640, "Desert": 28400, "Mountain": 6000},
+"Sorrel": {"Alluvial": 3020, "Black": 6040, "Red": 9060, "Laterite": 18800, "Desert": 28600, "Mountain": 6040},
+"Spinach": {"Alluvial": 3040, "Black": 6080, "Red": 9120, "Laterite": 18960, "Desert": 28800, "Mountain": 6080},
+"Squash": {"Alluvial": 3060, "Black": 6120, "Red": 9180, "Laterite": 19120, "Desert": 29000, "Mountain": 6120},
+"Strawberry": {"Alluvial": 3080, "Black": 6160, "Red": 9240, "Laterite": 19280, "Desert": 29200, "Mountain": 6160},
+"Swiss Chard": {"Alluvial": 3100, "Black": 6200, "Red": 9300, "Laterite": 19440, "Desert": 29400, "Mountain": 6200},
+"Tangerine": {"Alluvial": 3120, "Black": 6240, "Red": 9360, "Laterite": 19600, "Desert": 29600, "Mountain": 6240},
+"Thyme": {"Alluvial": 3140, "Black": 6280, "Red": 9420, "Laterite": 19760, "Desert": 29800, "Mountain": 6280},
+"Tomato": {"Alluvial": 3160, "Black": 6320, "Red": 9480, "Laterite": 19920, "Desert": 30000, "Mountain": 6320},
+"Turnip": {"Alluvial": 3180, "Black": 6360, "Red": 9540, "Laterite": 20080, "Desert": 30200, "Mountain": 6360},
+"Ulluco": {"Alluvial": 3200, "Black": 6400, "Red": 9600, "Laterite": 20240, "Desert": 30400, "Mountain": 6400},
+"Watercress": {"Alluvial": 3220, "Black": 6440, "Red": 9660, "Laterite": 20400, "Desert": 30600, "Mountain": 6440},
+"Yardlong Bean": {"Alluvial": 3240, "Black": 6480, "Red": 9720, "Laterite": 20560, "Desert": 30800, "Mountain": 6480},
+"Yuzu": {"Alluvial": 3260, "Black": 6520, "Red": 9780, "Laterite": 20720, "Desert": 31000, "Mountain": 6520},
+"Zucchini": {"Alluvial": 3280, "Black": 6560, "Red": 9840, "Laterite": 20880, "Desert": 31200, "Mountain": 6560},
+"Acorn Squash": {"Alluvial": 3300, "Black": 6600, "Red": 9900, "Laterite": 21040, "Desert": 31400, "Mountain": 6600},
+"Cardoon": {"Alluvial": 3320, "Black": 6640, "Red": 9960, "Laterite": 21200, "Desert": 31600, "Mountain": 6640},
+"Chayote": {"Alluvial": 3340, "Black": 6680, "Red": 10020, "Laterite": 21360, "Desert": 31800, "Mountain": 6680},
+"Cherimoya": {"Alluvial": 3360, "Black": 6720, "Red": 10080, "Laterite": 21520, "Desert": 32000, "Mountain": 6720},
+"Chinese Broccoli": {"Alluvial": 3380, "Black": 6760, "Red": 10140, "Laterite": 21680, "Desert": 32200, "Mountain": 6760},
+"Chinese Cabbage": {"Alluvial": 3400, "Black": 6800, "Red": 10200, "Laterite": 21840, "Desert": 32400, "Mountain": 6800},
+"Collard Greens": {"Alluvial": 3420, "Black": 6840, "Red": 10260, "Laterite": 22000, "Desert": 32600, "Mountain": 6840},
+"Cranberry": {"Alluvial": 3440, "Black": 6880, "Red": 10320, "Laterite": 22160, "Desert": 32800, "Mountain": 6880},
+"Crowder Pea": {"Alluvial": 3460, "Black": 6920, "Red": 10380, "Laterite": 22320, "Desert": 33000, "Mountain": 6920},
+"Currant": {"Alluvial": 3480, "Black": 6960, "Red": 10440, "Laterite": 22480, "Desert": 33200, "Mountain": 6960},
+"Dandelion": {"Alluvial": 3500, "Black": 7000, "Red": 10500, "Laterite": 22640, "Desert": 33400, "Mountain": 7000},
+"Dragon Fruit": {"Alluvial": 3520, "Black": 7040, "Red": 10560, "Laterite": 22800, "Desert": 33600, "Mountain": 7040},
+"Elderberry": {"Alluvial": 3540, "Black": 7080, "Red": 10620, "Laterite": 22960, "Desert": 33800, "Mountain": 7080},
+"Endive": {"Alluvial": 3560, "Black": 7120, "Red": 10680, "Laterite": 23120, "Desert": 34000, "Mountain": 7120},
+"Escarole": {"Alluvial": 3580, "Black": 7160, "Red": 10740, "Laterite": 23280, "Desert": 34200, "Mountain": 7160},
+"Fennel": {"Alluvial": 3600, "Black": 7200, "Red": 10800, "Laterite": 23440, "Desert": 34400, "Mountain": 7200},
+"Feijoa": {"Alluvial": 3620, "Black": 7240, "Red": 10860, "Laterite": 23600, "Desert": 34600, "Mountain": 7240},
+"Garlic": {"Alluvial": 3640, "Black": 7280, "Red": 11000, "Laterite": 24000, "Desert": 35000, "Mountain": 7280},
+"Ginger": {"Alluvial": 3660, "Black": 7320, "Red": 11120, "Laterite": 24240, "Desert": 35240, "Mountain": 7320},
+"Gooseberry": {"Alluvial": 3680, "Black": 7360, "Red": 11240, "Laterite": 24480, "Desert": 35480, "Mountain": 7360},
+"Grapefruit": {"Alluvial": 3700, "Black": 7400, "Red": 11360, "Laterite": 24720, "Desert": 35720, "Mountain": 7400},
+"Greengage": {"Alluvial": 3720, "Black": 7440, "Red": 11480, "Laterite": 24960, "Desert": 35960, "Mountain": 7440},
+"Guanabana": {"Alluvial": 3740, "Black": 7480, "Red": 11600, "Laterite": 25200, "Desert": 36200, "Mountain": 7480},
+"Guava": {"Alluvial": 3760, "Black": 7520, "Red": 11720, "Laterite": 25440, "Desert": 36440, "Mountain": 7520},
+"Horseradish": {"Alluvial": 3780, "Black": 7560, "Red": 11840, "Laterite": 25680, "Desert": 36680, "Mountain": 7560},
+"Hubbard Squash": {"Alluvial": 3800, "Black": 7600, "Red": 11960, "Laterite": 25920, "Desert": 36920, "Mountain": 7600},
+"Iceberg Lettuce": {"Alluvial": 3820, "Black": 7640, "Red": 12080, "Laterite": 26160, "Desert": 37160, "Mountain": 7640},
+"Jackfruit": {"Alluvial": 3840, "Black": 7680, "Red": 12200, "Laterite": 26400, "Desert": 37400, "Mountain": 7680},
+"Jerusalem Artichoke": {"Alluvial": 3860, "Black": 7720, "Red": 12320, "Laterite": 26640, "Desert": 37640, "Mountain": 7720},
+"Jicama": {"Alluvial": 3880, "Black": 7760, "Red": 12440, "Laterite": 26880, "Desert": 37880, "Mountain": 7760},
+"Kale": {"Alluvial": 3900, "Black": 7800, "Red": 12560, "Laterite": 27120, "Desert": 38120, "Mountain": 7800},
+"Kohlrabi": {"Alluvial": 3920, "Black": 7840, "Red": 12680, "Laterite": 27360, "Desert": 38360, "Mountain": 7840},
+"Komatsuna": {"Alluvial": 3940, "Black": 7880, "Red": 12800, "Laterite": 27600, "Desert": 38600, "Mountain": 7880},
+"Kumquat": {"Alluvial": 3960, "Black": 7920, "Red": 12920, "Laterite": 27840, "Desert": 38840, "Mountain": 7920},
+"Land Cress": {"Alluvial": 3980, "Black": 7960, "Red": 13040, "Laterite": 28080, "Desert": 39080, "Mountain": 7960},
+"Leek": {"Alluvial": 4000, "Black": 8000, "Red": 13160, "Laterite": 28320, "Desert": 39320, "Mountain": 8000},
+"Lemon Balm": {"Alluvial": 4020, "Black": 8040, "Red": 13280, "Laterite": 28560, "Desert": 39560, "Mountain":7800},
+"Komatsuna": {"Alluvial": 4060, "Black": 8120, "Red": 12880, "Laterite": 27920, "Desert": 40080, "Mountain": 8120},
+"Korean Chili": {"Alluvial": 4080, "Black": 8160, "Red": 12960, "Laterite": 28000, "Desert": 40320, "Mountain": 8160},
+"Korean Radish": {"Alluvial": 4100, "Black": 8200, "Red": 13040, "Laterite": 28080, "Desert": 40560, "Mountain": 8200},
+"Kudzu": {"Alluvial": 4120, "Black": 8240, "Red": 13120, "Laterite": 28160, "Desert": 40800, "Mountain": 8240},
+"Kumara": {"Alluvial": 4140, "Black": 8280, "Red": 13200, "Laterite": 28240, "Desert": 41040, "Mountain": 8280},
+"Kundong": {"Alluvial": 4160, "Black": 8320, "Red": 13280, "Laterite": 28320, "Desert": 41280, "Mountain": 8320},
+"Kurrajong": {"Alluvial": 4180, "Black": 8360, "Red": 13360, "Laterite": 28400, "Desert": 41520, "Mountain": 8360},
+"Kyphi": {"Alluvial": 4200, "Black": 8400, "Red": 13440, "Laterite": 28480, "Desert": 41760, "Mountain": 8400},
+"Lablab Bean": {"Alluvial": 4220, "Black": 8440, "Red": 13520, "Laterite": 28560, "Desert": 42000, "Mountain": 8440},
+"Lady's Finger": {"Alluvial": 4240, "Black": 8480, "Red": 13600, "Laterite": 28640, "Desert": 42240, "Mountain": 8480},
+"Lagundi": {"Alluvial": 4260, "Black": 8520, "Red": 13680, "Laterite": 28720, "Desert": 42480, "Mountain": 8520},
+"Lakoocha": {"Alluvial": 4280, "Black": 8560, "Red": 13760, "Laterite": 28800, "Desert": 42720, "Mountain": 8560},
+"Lallemantia": {"Alluvial": 4300, "Black": 8600, "Red": 13840, "Laterite": 28880, "Desert": 42960, "Mountain": 8600},
+"Lambsquarter": {"Alluvial": 4320, "Black": 8640, "Red": 13920, "Laterite": 28960, "Desert": 43200, "Mountain": 8640},
+"Licorice": {"Alluvial": 4340, "Black": 8680, "Red": 14000, "Laterite": 29040, "Desert": 43440, "Mountain": 8680},
+"Lilac": {"Alluvial": 4360, "Black": 8720, "Red": 14080, "Laterite": 29120, "Desert": 43680, "Mountain": 8720},
+"Lingonberry": {"Alluvial": 4380, "Black": 8760, "Red": 14160, "Laterite": 29200, "Desert": 43920, "Mountain": 8760},
+"Litchi": {"Alluvial": 4400, "Black": 8800, "Red": 14240, "Laterite": 29280, "Desert": 44160, "Mountain": 8800},
+"Loquat": {"Alluvial": 4420, "Black": 8840, "Red": 14320, "Laterite": 29360, "Desert": 44400, "Mountain": 8840}
+        };
+
+        const cropSelect = document.getElementById('crop-select');
+        const footprintDataDiv = document.getElementById('footprint-data');
+        const waterChartCanvas = document.getElementById('waterChart');
+        let waterChart;
+
+        // Populate the dropdown
+        function populateCropDropdown() {
+            for (const crop in cropsData) {
+                let option = document.createElement('option');
+                option.value = crop;
+                option.textContent = crop;
+                cropSelect.appendChild(option);
+            }
+        }
+
+        // Display the water footprint data
+        function displayFootprintData(crop) {
+            const footprint = cropsData[crop];
+            let output = `<h3>Water Footprint for ${crop}</h3><ul>`;
+            for (const soil in footprint) {
+                output += `<li>${soil} Soil: ${footprint[soil]} liters</li>`;
+            }
+            output += '</ul>';
+            footprintDataDiv.innerHTML = output;
+        }
+
+        // Generate or update pie chart
+        function generatePieChart(crop) {
+            const footprint = cropsData[crop];
+            const labels = Object.keys(footprint);
+            const data = Object.values(footprint);
+
+            if (waterChart) {
+                waterChart.destroy(); // Destroy previous chart instance if it exists
+            }
+
+            waterChart = new Chart(waterChartCanvas, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: ['#ff6384', '#36a2eb', '#ffce56', '#66ff66', '#ff9f40', '#ff6666']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        animateScale: true,
+                        animateRotate: true
+                    }
+                }
+            });
+        }
+
+        // Event listener for crop selection
+        cropSelect.addEventListener('change', function () {
+            const selectedCrop = this.value;
+            displayFootprintData(selectedCrop);
+            generatePieChart(selectedCrop);
+        });
+
+        // Initialize dropdown and default values
+        populateCropDropdown();
+    </script>
+
+</body>
+</html>
